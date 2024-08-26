@@ -1,0 +1,39 @@
+import requests as req
+import re
+from bs4 import BeautifulSoup
+import pandas as pd
+
+dict1 = {'price': [], 'type': [], 'date': [], 'description': []}
+
+for i in range(1, 6):
+    response = req.get(f'https://arenda.dragee.ru/offer/list/?page={i}')
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    prices = soup.find_all("div", class_="b-offer__price")
+    for price in prices:
+        raw_price = price.text
+        price_value = re.findall(r'\d+', raw_price)
+        dict1['price'].append(''.join(price_value))
+
+    type_flats = soup.find_all("a", class_="b-link b-offer__title i-inline")
+    for type_flat in type_flats:
+        dict1['type'].append(type_flat.text.strip())
+
+    dates = soup.find_all("div", class_="b-offer__title-date i-inline")
+    for date in dates:
+        raw_date = date.text.strip()
+        if 'на сайте' not in raw_date:
+            dict1['date'].append(raw_date)
+
+    contents = soup.find_all("div", class_="b-offer__content")
+    for i, content in enumerate(contents):
+        if i % 3 == 2:
+            raw_content = content.text.strip()
+            if 'style="color:rgb(0, 0, 0)"' in raw_content:
+                content_value = re.findall(r'style="color:rgb\(0, 0, 0\)"\>(.*?)\<', raw_content)[0]
+                dict1['description'].append(content_value)
+            else:
+                dict1['description'].append(None)
+
+df = pd.DataFrame(dict1)
+df.to_excel(r'C:\Users\Gaming\Desktop\недвижимость.xlsx')
